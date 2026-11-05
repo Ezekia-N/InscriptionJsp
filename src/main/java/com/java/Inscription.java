@@ -22,6 +22,7 @@ public class Inscription extends HttpServlet
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
 	{
 		String message = messageForResult(request.getParameter("result"));
+		String error = null;
 
 		if ("edit".equals(request.getParameter("action")))
 		{
@@ -31,20 +32,20 @@ public class Inscription extends HttpServlet
 
 				if (person == null)
 				{
-					message = "Utilisateur introuvable.";
+					error = "Utilisateur introuvable.";
 				}
 				else
 				{
 					request.setAttribute("person", person);
 				}
 			}
-			catch (PersonException | SQLException e)
+			catch (PersonException | SQLException e)	
 			{
-				message = "Erreur : " + e.getMessage();
+				error = e.getMessage();
 			}
 		}
 
-		showList(request, response, message);
+		showList(request, response, message, error);
 	}
 
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
@@ -78,17 +79,24 @@ public class Inscription extends HttpServlet
 		}
 		catch (PersonException | SQLException e)
 		{
-			showList(request, response, "Erreur : " + e.getMessage());
+			showList(request, response, null, e.getMessage());
 		}
 	}
 
 	private Person readPerson(HttpServletRequest request) throws PersonException
 	{
+		String ageValue = request.getParameter("age");
+
+		if (ageValue == null || ageValue.trim().isEmpty())
+		{
+			throw new PersonException("L'âge est obligatoire.");
+		}
+
 		int age;
 
 		try
 		{
-			age = Integer.parseInt(request.getParameter("age"));
+			age = Integer.parseInt(ageValue.trim());
 		}
 		catch (NumberFormatException e)
 		{
@@ -131,10 +139,10 @@ public class Inscription extends HttpServlet
 		return null;
 	}
 
-	private void showList(HttpServletRequest request, HttpServletResponse response, String message)
+	private void showList(HttpServletRequest request, HttpServletResponse response, String message, String error)
 		throws ServletException, IOException
 	{
-		String error = null;
+		String loadError = null;
 
 		try
 		{
@@ -142,17 +150,22 @@ public class Inscription extends HttpServlet
 		}
 		catch (SQLException | PersonException e)
 		{
-			error = "Impossible de charger les utilisateurs : " + e.getMessage();
+			loadError = "Impossible de charger les utilisateurs : " + e.getMessage();
 		}
 
-		if (error != null)
+		if (loadError != null)
 		{
-			message = message == null ? error : message + " " + error;
+			error = error == null ? loadError : error + " " + loadError;
 		}
 
 		if (message != null)
 		{
 			request.setAttribute("message", message);
+		}
+
+		if (error != null)
+		{
+			request.setAttribute("error", error);
 		}
 
 		request.getRequestDispatcher("/index.jsp").forward(request, response);
